@@ -507,7 +507,6 @@ ucs_status_t uct_rc_iface_init_rx(uct_rc_iface_t *iface,
                                   const uct_rc_iface_common_config_t *config,
                                   struct ibv_srq **srq_p)
 {
-    *srq_p = NULL;
     return UCS_OK;
 }
 

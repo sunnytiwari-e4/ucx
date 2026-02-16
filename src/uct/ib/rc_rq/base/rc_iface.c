@@ -507,23 +507,7 @@ ucs_status_t uct_rc_iface_init_rx(uct_rc_iface_t *iface,
                                   const uct_rc_iface_common_config_t *config,
                                   struct ibv_srq **srq_p)
 {
-    struct ibv_srq_init_attr srq_init_attr;
-    struct ibv_pd *pd = uct_ib_iface_md(&iface->super)->pd;
-    struct ibv_srq *srq;
-
-    srq_init_attr.attr.max_sge   = 1;
-    srq_init_attr.attr.max_wr    = config->super.rx.queue_len;
-    srq_init_attr.attr.srq_limit = 0;
-    srq_init_attr.srq_context    = iface;
-    srq                          = ibv_create_srq(pd, &srq_init_attr);
-    if (srq == NULL) {
-        uct_ib_check_memlock_limit_msg(pd->context, UCS_LOG_LEVEL_ERROR,
-                                       "ibv_create_srq()");
-        return UCS_ERR_IO_ERROR;
-    }
-    iface->rx.srq.quota          = srq_init_attr.attr.max_wr;
-    *srq_p                       = srq;
-
+    *srq_p = NULL;
     return UCS_OK;
 }
 
@@ -588,8 +572,6 @@ UCS_CLASS_INIT_FUNC(uct_rc_iface_t, uct_iface_ops_t *tl_ops,
                                                  UCT_IB_DIR_TX);
     /* Prevent title CQE overwriting */
     self->tx.cq_available       = tx_cq_size - 2;
-    self->rx.srq.available      = 0;
-    self->rx.srq.quota          = 0;
     self->config.tx_qp_len      = config->super.tx.queue_len;
     self->config.tx_min_sge     = config->super.tx.min_sge;
     self->config.tx_min_inline  = config->super.tx.min_inline;
@@ -818,9 +800,9 @@ UCS_CLASS_DEFINE(uct_rc_iface_t, uct_ib_iface_t);
 void uct_rc_iface_fill_attr(uct_rc_iface_t *iface, uct_ib_qp_attr_t *attr,
                             unsigned max_send_wr, struct ibv_srq *srq)
 {
-    attr->srq                        = srq;
+    attr->srq                        = NULL;
     attr->cap.max_send_wr            = max_send_wr;
-    attr->cap.max_recv_wr            = 0;
+    attr->cap.max_recv_wr            = 4096;
     attr->cap.max_send_sge           = iface->config.tx_min_sge;
     attr->cap.max_recv_sge           = 1;
     attr->cap.max_inline_data        = iface->config.tx_min_inline;

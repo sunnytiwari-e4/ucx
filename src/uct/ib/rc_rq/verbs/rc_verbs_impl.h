@@ -9,8 +9,8 @@
 
 #include <ucs/arch/bitops.h>
 
-#include <uct/ib/rc/base/rc_iface.h>
-#include <uct/ib/rc/base/rc_ep.h>
+#include <uct/ib/rc_rq/base/rc_iface.h>
+#include <uct/ib/rc_rq/base/rc_ep.h>
 
 
 static inline void
@@ -26,25 +26,7 @@ uct_rc_verbs_iface_common_prepost_recvs(uct_rc_verbs_iface_t *iface);
 
 void uct_rc_verbs_iface_common_progress_enable(uct_iface_h tl_iface, unsigned flags);
 
-unsigned uct_rc_verbs_iface_post_recv_always(uct_rc_verbs_iface_t *iface, unsigned max);
-
-static inline unsigned uct_rc_verbs_iface_post_recv_common(uct_rc_verbs_iface_t *iface,
-                                                           int fill)
-{
-    unsigned batch = iface->super.super.config.rx_max_batch;
-    unsigned count;
-
-    if (iface->super.rx.srq.available < batch) {
-        if (ucs_likely(fill == 0)) {
-            return 0;
-        } else {
-            count = iface->super.rx.srq.available;
-        }
-    } else {
-        count = batch;
-    }
-    return uct_rc_verbs_iface_post_recv_always(iface, count);
-}
+unsigned uct_rc_verbs_ep_post_recv(uct_rc_verbs_ep_t *ep, unsigned max);
 
 static UCS_F_ALWAYS_INLINE void
 uct_rc_verbs_iface_handle_am(uct_rc_iface_t *iface, uct_rc_hdr_t *hdr,
@@ -83,6 +65,8 @@ uct_rc_verbs_iface_poll_rx_common(uct_rc_verbs_iface_t *iface)
     ucs_status_t status;
     unsigned num_wcs = iface->super.super.config.rx_max_poll;
     struct ibv_wc wc[num_wcs];
+    uct_rc_ep_t *rc_ep;
+    uct_rc_verbs_ep_t *ep;
 
     status = uct_ib_poll_cq(iface->super.super.cq[UCT_IB_DIR_RX], &num_wcs, wc);
     if (status != UCS_OK) {
@@ -109,13 +93,20 @@ uct_rc_verbs_iface_poll_rx_common(uct_rc_verbs_iface_t *iface)
                                    uct_rc_ep_packet_dump);
         uct_rc_verbs_iface_handle_am(&iface->super, hdr, wc[i].wr_id, wc[i].qp_num,
                                      wc[i].byte_len, wc[i].imm_data, wc[i].slid);
+
+        rc_ep = uct_rc_iface_lookup_ep(&iface->super, wc[i].qp_num);
+        if (ucs_likely(rc_ep != NULL)) {
+            rc_ep->rx.available++;
+            if (rc_ep->rx.available >= iface->super.super.config.rx_max_batch) {
+                ep = ucs_derived_of(rc_ep, uct_rc_verbs_ep_t);
+                uct_rc_verbs_ep_post_recv(ep, rc_ep->rx.available);
+            }
+        }
     }
-    iface->super.rx.srq.available += num_wcs;
     UCS_STATS_UPDATE_COUNTER(iface->super.super.stats,
                              UCT_IB_IFACE_STAT_RX_COMPLETION, num_wcs);
 
 out:
-    uct_rc_verbs_iface_post_recv_common(iface, 0);
     return num_wcs;
 }
 

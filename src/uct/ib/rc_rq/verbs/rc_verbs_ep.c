@@ -684,7 +684,7 @@ UCS_CLASS_INIT_FUNC(uct_rc_verbs_ep_t, const uct_ep_params_t *params)
     ucs_status_t status;
 
     status = uct_rc_iface_qp_create(&iface->super, &self->qp, &attr,
-                                    iface->super.config.tx_qp_len, iface->srq);
+                                    iface->super.config.tx_qp_len, NULL);
     if (status != UCS_OK) {
         goto err;
     }
@@ -709,8 +709,12 @@ UCS_CLASS_INIT_FUNC(uct_rc_verbs_ep_t, const uct_ep_params_t *params)
         goto err_event_unreg;
     }
 
-    status = uct_rc_verbs_iface_common_prepost_recvs(iface);
-    if (status != UCS_OK) {
+    self->super.rx.max       = 4096;
+    self->super.rx.available = self->super.rx.max;
+
+    if (uct_rc_verbs_ep_post_recv(self, self->super.rx.max) == 0) {
+        ucs_error("failed to post initial receives");
+        status = UCS_ERR_NO_MEMORY;
         goto err_remove_qp;
     }
 

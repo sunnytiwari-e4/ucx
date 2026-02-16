@@ -30,17 +30,17 @@ libuct_ib_la_SOURCES = \
 
 if HAVE_TL_RC
 noinst_HEADERS += \
-	rc/base/rc_def.h \
-	rc/base/rc_ep.h \
-	rc/base/rc_iface.h \
-	rc/verbs/rc_verbs.h \
-	rc/verbs/rc_verbs_impl.h
+	rc_rq/base/rc_def.h \
+	rc_rq/base/rc_ep.h \
+	rc_rq/base/rc_iface.h \
+	rc_rq/verbs/rc_verbs.h \
+	rc_rq/verbs/rc_verbs_impl.h
 
 libuct_ib_la_SOURCES += \
-	rc/base/rc_ep.c \
-	rc/base/rc_iface.c \
-	rc/verbs/rc_verbs_ep.c \
-	rc/verbs/rc_verbs_iface.c
+	rc_rq/base/rc_ep.c \
+	rc_rq/base/rc_iface.c \
+	rc_rq/verbs/rc_verbs_ep.c \
+	rc_rq/verbs/rc_verbs_iface.c
 
 endif # HAVE_TL_RC
 

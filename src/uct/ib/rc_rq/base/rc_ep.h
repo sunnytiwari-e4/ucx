@@ -218,6 +218,10 @@ struct uct_rc_ep {
     ucs_arbiter_group_t arb_group;
     uint32_t            flush_rkey;
     uct_rc_fc_t         fc;
+    struct {
+        unsigned        available; /* Available receive credits/buffers */
+        unsigned        max;       /* Max receive buffers */
+    } rx;
     uint16_t            atomic_mr_offset;
     uint8_t             path_index;
     uint8_t             flags;

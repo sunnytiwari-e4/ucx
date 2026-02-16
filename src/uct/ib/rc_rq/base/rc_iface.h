@@ -236,12 +236,6 @@ typedef struct uct_rc_iface_ops {
 } uct_rc_iface_ops_t;
 
 
-typedef struct uct_rc_srq {
-    unsigned                 available;
-    unsigned                 quota;
-} uct_rc_srq_t;
-
-
 struct uct_rc_iface {
     uct_ib_iface_t              super;
 
@@ -269,7 +263,6 @@ struct uct_rc_iface {
 
     struct {
         ucs_mpool_t          mp;
-        uct_rc_srq_t         srq;
     } rx;
 
     struct {

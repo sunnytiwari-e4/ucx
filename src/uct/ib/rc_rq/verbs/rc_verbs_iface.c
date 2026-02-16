@@ -12,7 +12,7 @@
 #include "rc_verbs_impl.h"
 
 #include <uct/api/uct.h>
-#include <uct/ib/rc/base/rc_iface.h>
+#include <uct/ib/rc_rq/base/rc_iface.h>
 #include <uct/ib/base/ib_device.h>
 #include <uct/ib/base/ib_log.h>
 #include <uct/base/uct_md.h>
@@ -229,17 +229,11 @@ static ucs_status_t
 uct_rc_iface_verbs_init_rx(uct_rc_iface_t *rc_iface,
                            const uct_rc_iface_common_config_t *config)
 {
-    uct_rc_verbs_iface_t *iface = ucs_derived_of(rc_iface, uct_rc_verbs_iface_t);
-
-    return uct_rc_iface_init_rx(rc_iface, config, &iface->srq);
+    return uct_rc_iface_init_rx(rc_iface, config, NULL);
 }
 
 void uct_rc_iface_verbs_cleanup_rx(uct_rc_iface_t *rc_iface)
 {
-    uct_rc_verbs_iface_t *iface = ucs_derived_of(rc_iface, uct_rc_verbs_iface_t);
-
-    /* TODO flush RX buffers */
-    uct_ib_destroy_srq(iface->srq);
 }
 
 static void
@@ -346,7 +340,7 @@ static UCS_CLASS_INIT_FUNC(uct_rc_verbs_iface_t, uct_md_h tl_md,
     /* Create a dummy QP in order to find out max_inline */
     status = uct_rc_iface_qp_create(&self->super, &qp, &attr,
                                     self->super.config.tx_qp_len,
-                                    self->srq);
+                                    NULL);
     if (status != UCS_OK) {
         goto err_common_cleanup;
     }
@@ -377,19 +371,6 @@ err:
 ucs_status_t
 uct_rc_verbs_iface_common_prepost_recvs(uct_rc_verbs_iface_t *iface)
 {
-    if (iface->super.rx.srq.quota == 0) {
-        return UCS_OK;
-    }
-
-    iface->super.rx.srq.available = iface->super.rx.srq.quota;
-    iface->super.rx.srq.quota     = 0;
-    while (iface->super.rx.srq.available > 0) {
-        if (uct_rc_verbs_iface_post_recv_common(iface, 1) == 0) {
-            ucs_error("failed to post receives");
-            return UCS_ERR_NO_MEMORY;
-        }
-    }
-
     return UCS_OK;
 }
 
@@ -410,8 +391,10 @@ void uct_rc_verbs_iface_common_progress_enable(uct_iface_h tl_iface, unsigned fl
                                       flags);
 }
 
-unsigned uct_rc_verbs_iface_post_recv_always(uct_rc_verbs_iface_t *iface, unsigned max)
+unsigned uct_rc_verbs_ep_post_recv(uct_rc_verbs_ep_t *ep, unsigned max)
 {
+    uct_rc_verbs_iface_t *iface = ucs_derived_of(ep->super.super.super.iface,
+                                                 uct_rc_verbs_iface_t);
     struct ibv_recv_wr *bad_wr;
     uct_ib_recv_wr_t *wrs;
     unsigned count;
@@ -425,11 +408,11 @@ unsigned uct_rc_verbs_iface_post_recv_always(uct_rc_verbs_iface_t *iface, unsign
         return 0;
     }
 
-    ret = ibv_post_srq_recv(iface->srq, &wrs[0].ibwr, &bad_wr);
+    ret = ibv_post_recv(ep->qp, &wrs[0].ibwr, &bad_wr);
     if (ret != 0) {
-        ucs_fatal("ibv_post_srq_recv() returned %d: %m", ret);
+        ucs_fatal("ibv_post_recv() returned %d: %m", ret);
     }
-    iface->super.rx.srq.available -= count;
+    ep->super.rx.available -= count;
 
     return count;
 }

@@ -7,8 +7,8 @@
 #ifndef UCT_RC_VERBS_H
 #define UCT_RC_VERBS_H
 
-#include <uct/ib/rc/base/rc_iface.h>
-#include <uct/ib/rc/base/rc_ep.h>
+#include <uct/ib/rc_rq/base/rc_iface.h>
+#include <uct/ib/rc_rq/base/rc_ep.h>
 #include <ucs/type/class.h>
 
 
@@ -89,7 +89,6 @@ typedef struct uct_rc_verbs_iface_config {
  */
 typedef struct uct_rc_verbs_iface {
     uct_rc_iface_t              super;
-    struct ibv_srq              *srq;
     struct ibv_send_wr          inl_am_wr;
     struct ibv_send_wr          inl_rwrite_wr;
     struct ibv_sge              inl_sge[UCT_IB_MAX_IOV];

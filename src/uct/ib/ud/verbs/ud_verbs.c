@@ -125,6 +125,7 @@ uct_ud_verbs_ep_tx_skb(uct_ud_verbs_iface_t *iface, uct_ud_verbs_ep_t *ep,
     iface->tx.sge[0].lkey   = skb->lkey;
     iface->tx.sge[0].length = skb->len;
     iface->tx.sge[0].addr   = (uintptr_t)skb->neth;
+    skb->tx_sn              = iface->tx.send_sn;
     uct_ud_verbs_post_send(iface, ep, &iface->tx.wr_skb, send_flags, max_log_sge);
 }
 

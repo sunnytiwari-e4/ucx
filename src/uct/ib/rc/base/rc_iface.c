@@ -105,7 +105,6 @@ ucs_config_field_t uct_rc_iface_common_config_table[] = {
   {NULL}
 };
 
-
 /* Config relevant for rc_mlx5 and rc_verbs only (not for dc) */
 ucs_config_field_t uct_rc_iface_config_table[] = {
   {"RC_", "MAX_NUM_EPS=256", NULL,

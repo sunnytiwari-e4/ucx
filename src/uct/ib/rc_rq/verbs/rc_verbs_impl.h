@@ -83,6 +83,7 @@ uct_rc_verbs_iface_poll_rx_common(uct_rc_verbs_iface_t *iface)
             }
             /* we can get flushed messages during ep destroy */
             if (wc[i].status == IBV_WC_WR_FLUSH_ERR) {
+                ucs_mpool_put_inline(desc);
                 continue;
             }
             UCT_IB_IFACE_VERBS_COMPLETION_FATAL("receive", &iface->super.super, i, wc);

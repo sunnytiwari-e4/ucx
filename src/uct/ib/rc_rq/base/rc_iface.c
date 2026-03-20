@@ -571,6 +571,7 @@ UCS_CLASS_INIT_FUNC(uct_rc_iface_t, uct_iface_ops_t *tl_ops,
                                                  UCT_IB_DIR_TX);
     /* Prevent title CQE overwriting */
     self->tx.cq_available       = tx_cq_size - 2;
+    self->config.rx_qp_len      = config->super.rx.queue_len;
     self->config.tx_qp_len      = config->super.tx.queue_len;
     self->config.tx_min_sge     = config->super.tx.min_sge;
     self->config.tx_min_inline  = config->super.tx.min_inline;
@@ -801,7 +802,7 @@ void uct_rc_iface_fill_attr(uct_rc_iface_t *iface, uct_ib_qp_attr_t *attr,
 {
     attr->srq                        = NULL;
     attr->cap.max_send_wr            = max_send_wr;
-    attr->cap.max_recv_wr            = 4096;
+    attr->cap.max_recv_wr            = iface->config.rx_qp_len;
     attr->cap.max_send_sge           = iface->config.tx_min_sge;
     attr->cap.max_recv_sge           = 1;
     attr->cap.max_inline_data        = iface->config.tx_min_inline;

@@ -266,6 +266,7 @@ struct uct_rc_iface {
     } rx;
 
     struct {
+        unsigned             rx_qp_len;
         unsigned             tx_qp_len;
         unsigned             tx_min_sge;
         unsigned             tx_min_inline;

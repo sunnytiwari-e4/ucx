@@ -396,25 +396,36 @@ unsigned uct_rc_verbs_ep_post_recv(uct_rc_verbs_ep_t *ep, unsigned max)
     uct_rc_verbs_iface_t *iface = ucs_derived_of(ep->super.super.super.iface,
                                                  uct_rc_verbs_iface_t);
     struct ibv_recv_wr *bad_wr;
-    uct_ib_recv_wr_t *wrs;
-    unsigned count;
+    uct_ib_recv_wr_t wrs[32];
+    unsigned count, total_count = 0, batch;
     int ret;
 
-    wrs  = ucs_alloca(sizeof *wrs  * max);
-
-    count = uct_ib_iface_prepare_rx_wrs(&iface->super.super, &iface->super.rx.mp,
-                                        wrs, max);
-    if (ucs_unlikely(count == 0)) {
+    if (ucs_unlikely(max == 0)) {
         return 0;
     }
 
-    ret = ibv_post_recv(ep->qp, &wrs[0].ibwr, &bad_wr);
-    if (ret != 0) {
-        ucs_fatal("ibv_post_recv() returned %d: %m", ret);
-    }
-    ep->super.rx.available -= count;
+    while (max > 0) {
+        batch = ucs_min(max, 32);
+        count = uct_ib_iface_prepare_rx_wrs(&iface->super.super, &iface->super.rx.mp,
+                                            wrs, batch);
+        if (ucs_unlikely(count == 0)) {
+            break;
+        }
 
-    return count;
+        ret = ibv_post_recv(ep->qp, &wrs[0].ibwr, &bad_wr);
+        if (ret != 0) {
+            ucs_fatal("ibv_post_recv() returned %d: %m", ret);
+        }
+        total_count += count;
+
+        if (count < batch) {
+            break;
+        }
+        max -= count;
+    }
+
+    ep->super.rx.available -= total_count;
+    return total_count;
 }
 
 static UCS_CLASS_CLEANUP_FUNC(uct_rc_verbs_iface_t)

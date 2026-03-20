@@ -709,7 +709,7 @@ UCS_CLASS_INIT_FUNC(uct_rc_verbs_ep_t, const uct_ep_params_t *params)
         goto err_event_unreg;
     }
 
-    self->super.rx.max       = 4096;
+    self->super.rx.max       = iface->super.config.rx_qp_len;
     self->super.rx.available = self->super.rx.max;
 
     if (uct_rc_verbs_ep_post_recv(self, self->super.rx.max) == 0) {

@@ -98,9 +98,13 @@ uct_rc_verbs_iface_poll_rx_common(uct_rc_verbs_iface_t *iface)
         rc_ep = uct_rc_iface_lookup_ep(&iface->super, wc[i].qp_num);
         if (ucs_likely(rc_ep != NULL)) {
             rc_ep->rx.available++;
-            if (rc_ep->rx.available >= iface->super.super.config.rx_max_batch) {
-                ep = ucs_derived_of(rc_ep, uct_rc_verbs_ep_t);
-                uct_rc_verbs_ep_post_recv(ep, rc_ep->rx.available);
+            ep = ucs_derived_of(rc_ep, uct_rc_verbs_ep_t);
+            if (ucs_unlikely(ep->rx.available >= ep->rx.max / 2)) {
+                unsigned posted;
+                posted = uct_rc_verbs_ep_post_recv(ep, ep->rx.available);
+                if (posted > 0) {
+                    uct_rc_fc_req_window_update(&iface->super, &ep->super);
+                }
             }
         }
     }

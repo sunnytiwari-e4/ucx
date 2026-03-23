@@ -473,6 +473,7 @@ protected:
 #define UCT_TEST_IB_TLS \
     rc_mlx5,            \
     rc_verbs,           \
+    rc_rq,              \
     dc_mlx5,            \
     ud_verbs,           \
     ud_mlx5,            \
@@ -522,7 +523,10 @@ protected:
  * @param _test_case  Test case class, derived from uct_test.
  */
 #define UCT_INSTANTIATE_TEST_CASE(_test_case) \
-    UCS_PP_FOREACH(_UCT_INSTANTIATE_TEST_CASE, _test_case, UCT_TEST_TLS)
+    UCT_INSTANTIATE_NO_GPU_TEST_CASE(_test_case) \
+    UCS_PP_FOREACH(_UCT_INSTANTIATE_TEST_CASE, _test_case, UCT_TEST_ROCM_MEM_TYPE_TLS) \
+    UCS_PP_FOREACH(_UCT_INSTANTIATE_TEST_CASE, _test_case, UCT_TEST_CUDA_MEM_TYPE_TLS)
+
 #define _UCT_INSTANTIATE_TEST_CASE(_test_case, _tl_name) \
     INSTANTIATE_TEST_SUITE_P(_tl_name, _test_case, \
                             testing::ValuesIn(_test_case::enum_resources(UCS_PP_QUOTE(_tl_name))));
@@ -605,6 +609,7 @@ protected:
  */
 #define UCT_INSTANTIATE_RC_TEST_CASE(_test_case) \
     _UCT_INSTANTIATE_TEST_CASE(_test_case, rc_verbs) \
+    _UCT_INSTANTIATE_TEST_CASE(_test_case, rc_rq) \
     _UCT_INSTANTIATE_TEST_CASE(_test_case, rc_mlx5)
 
 

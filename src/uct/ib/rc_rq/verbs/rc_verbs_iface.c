@@ -97,6 +97,7 @@ static void uct_rc_verbs_handle_failure(uct_ib_iface_t *ib_iface, void *arg,
     }
 
     count = uct_rc_verbs_get_tx_res_count(ep, wc);
+
     uct_rc_txqp_purge_outstanding(iface, &ep->super.txqp, ep_status,
                                   ep->txcnt.ci + count, 0);
     ucs_arbiter_group_purge(&iface->tx.arbiter, &ep->super.arb_group,
@@ -262,7 +263,8 @@ static UCS_CLASS_INIT_FUNC(uct_rc_verbs_iface_t, uct_md_h tl_md,
     init_attr.fc_req_size           = sizeof(uct_rc_pending_req_t);
     init_attr.rx_hdr_len            = sizeof(uct_rc_hdr_t);
     init_attr.qp_type               = IBV_QPT_RC;
-    init_attr.cq_len[UCT_IB_DIR_RX] = ib_config->rx.queue_len;
+    init_attr.cq_len[UCT_IB_DIR_RX] = ucs_max(65536, ib_config->rx.queue_len * 16);
+    init_attr.flags                 = UCT_IB_CQ_IGNORE_OVERRUN;
     init_attr.cq_len[UCT_IB_DIR_TX] = config->super.tx_cq_len;
     init_attr.seg_size              = ib_config->seg_size;
     init_attr.xport_hdr_len         = ucs_max(sizeof(uct_rc_hdr_t), UCT_IB_RETH_LEN);
@@ -571,11 +573,11 @@ uct_rc_verbs_query_tl_devices(uct_md_h md,
         return status;
     }
 
-    return uct_ib_device_query_ports(&ib_md->dev, UCT_IB_DEVICE_FLAG_SRQ,
+    return uct_ib_device_query_ports(&ib_md->dev, 0,
                                      tl_devices_p, num_tl_devices_p);
 }
 
-UCT_TL_DEFINE_ENTRY(&uct_ib_component, rc_verbs, uct_rc_verbs_query_tl_devices,
-                    uct_rc_verbs_iface_t, "RC_VERBS_",
+UCT_TL_DEFINE_ENTRY(&uct_ib_component, rc_rq, uct_rc_verbs_query_tl_devices,
+                    uct_rc_verbs_iface_t, "RC_RQ_",
                     uct_rc_verbs_iface_config_table,
                     uct_rc_verbs_iface_config_t);

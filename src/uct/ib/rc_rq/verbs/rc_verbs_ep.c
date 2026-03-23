@@ -437,7 +437,7 @@ static void uct_rc_verbs_ep_post_flush(uct_rc_verbs_ep_t *ep, int send_flags)
         wr.opcode              = IBV_WR_RDMA_WRITE;
         wr.wr.rdma.remote_addr = 0;
         wr.wr.rdma.rkey        = 0;
-        inl_flag               = IBV_SEND_INLINE;
+        inl_flag               = 0;
     }
     wr.next = NULL;
 
@@ -477,6 +477,7 @@ ucs_status_t uct_rc_verbs_ep_flush(uct_ep_h tl_ep, unsigned flags,
     uct_rc_verbs_ep_t *ep       = ucs_derived_of(tl_ep, uct_rc_verbs_ep_t);
     int already_canceled        = ep->super.flags & UCT_RC_EP_FLAG_FLUSH_CANCEL;
     ucs_status_t status;
+    uint16_t sn;
 
     UCT_CHECK_PARAM(!ucs_test_all_flags(flags, UCT_FLUSH_FLAG_CANCEL |
                                                UCT_FLUSH_FLAG_REMOTE),
@@ -498,18 +499,30 @@ ucs_status_t uct_rc_verbs_ep_flush(uct_ep_h tl_ep, unsigned flags,
 
     if (uct_rc_txqp_unsignaled(&ep->super.txqp) != 0) {
         UCT_RC_CHECK_RES(&iface->super, &ep->super);
+        sn = ep->txcnt.pi; /* capture sn before dummy WQE increments pi */
         uct_rc_verbs_ep_post_flush(ep, IBV_SEND_SIGNALED);
+    } else {
+        sn = ep->txcnt.pi - 1; /* zero-indexed pi */
     }
 
     if (ucs_unlikely((flags & UCT_FLUSH_FLAG_CANCEL) && !already_canceled)) {
-        status = uct_ib_modify_qp(ep->qp, IBV_QPS_ERR);
-        if (status != UCS_OK) {
-            return status;
+        if (strncmp(uct_ib_device_name(uct_ib_iface_device(&iface->super.super)),
+                    "irdma", 5) != 0) {
+            status = uct_ib_modify_qp(ep->qp, IBV_QPS_ERR);
+            if (status != UCS_OK) {
+                return status;
+            }
+        } else {
+            /* iRDMA generates a fatal CQ error when QP is modified to ERR,
+             * crashing the progress engine. Manually purge software queues. */
+            uct_rc_txqp_purge_outstanding(&iface->super, &ep->super.txqp,
+                                          UCS_ERR_CANCELED, ep->txcnt.pi, 0);
+            return UCS_OK;
         }
     }
 
     return uct_rc_txqp_add_flush_comp(&iface->super, &ep->super.super,
-                                      &ep->super.txqp, comp, ep->txcnt.pi);
+                                      &ep->super.txqp, comp, sn);
 }
 
 ucs_status_t uct_rc_verbs_ep_fence(uct_ep_h tl_ep, unsigned flags)

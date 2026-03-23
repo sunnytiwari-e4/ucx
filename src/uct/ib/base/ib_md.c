@@ -206,12 +206,12 @@ static ucs_stats_class_t uct_ib_md_stats_class = {
 #endif
 
 
-extern uct_tl_t UCT_TL_NAME(rc_verbs);
+extern uct_tl_t UCT_TL_NAME(rc_rq);
 extern uct_tl_t UCT_TL_NAME(ud_verbs);
 
 static uct_tl_t *uct_ib_tls[] = {
 #ifdef HAVE_TL_RC
-    &UCT_TL_NAME(rc_verbs),
+    &UCT_TL_NAME(rc_rq),
 #endif
 #ifdef HAVE_TL_UD
     &UCT_TL_NAME(ud_verbs),
